@@ -146,66 +146,6 @@ class Qdrant:
         return [hit.page_content for hit in results]
 
 
-
-    # def manage_aliases(self, alias_name: str, collection_name: str, previous_collection=None):
-    #     """Manage Qdrant collection aliases"""
-    #     try:
-    #         # Get existing aliases
-    #         aliases = self.client.get_aliases()
-    #         previous_collection = previous_collection or None
-
-    #         # Find existing alias if not provided
-    #         if not previous_collection:
-    #             for alias in aliases.aliases:
-    #                 if alias.alias_name == alias_name:
-    #                     previous_collection = alias.collection_name
-    #                     break
-
-    #         # If there's a previous collection, update alias and delete old collection
-    #         if previous_collection:
-    #             # First update the alias to point to new collection
-    #             self.client.update_collection_aliases(
-    #                 change_aliases_operations=[
-    #                     models.DeleteAliasOperation(
-    #                         delete_alias=models.DeleteAlias(alias_name=alias_name)
-    #                     ),
-    #                     models.CreateAliasOperation(
-    #                         create_alias=models.CreateAlias(
-    #                             collection_name=collection_name,
-    #                             alias_name=alias_name
-    #                         )
-    #                     ),
-    #                 ]
-    #             )
-                
-    #             # Only delete the old collection after successfully updating alias
-    #             try:
-    #                 self.client.delete_collection(collection_name=previous_collection)
-    #                 logger.info(f"Successfully deleted previous collection - {previous_collection}")
-    #             except Exception as e:
-    #                 logger.error(f"Failed to delete previous collection {previous_collection}: {str(e)}")
-                
-    #             logger.info(f"Switched alias to new collection - {collection_name}")
-            
-    #         # If no previous collection, just create the alias
-    #         else:
-    #             self.client.update_collection_aliases(
-    #                 change_aliases_operations=[
-    #                     models.CreateAliasOperation(
-    #                         create_alias=models.CreateAlias(
-    #                             collection_name=collection_name,
-    #                             alias_name=alias_name
-    #                         )
-    #                     )
-    #                 ]
-    #             )
-    #             logger.info(f"Created alias name - {alias_name} for collection - {collection_name}")
-        
-    #     except Exception as e:
-    #         logger.error(f"Error managing aliases: {str(e)}")
-    #         raise
-
-
 # -----------------------------
 # ✅ Singleton instance helper
 # -----------------------------

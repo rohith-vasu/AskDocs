@@ -3,11 +3,30 @@ import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, ArrowDownCircle } from "lucide-react";
+import { Loader2, ArrowDownCircle, FileText, Plus, X, Trash2 } from "lucide-react";
 import { useChatStore } from "@/stores/chatStore";
 import api from "@/lib/api";
 import { toast } from "sonner";
-import type { Message } from "@/types";
+import type { Message, SessionDocument, Document } from "@/types";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
 
 // Components
 import { ChatMessage } from "@/components/chat/ChatMessage";
@@ -40,6 +59,12 @@ export default function Chat(): JSX.Element {
   const [input, setInput] = useState<string>("");
   const [isUserNearBottom, setIsUserNearBottom] = useState<boolean>(true);
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [sessionDocuments, setSessionDocuments] = useState<SessionDocument[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState<boolean>(false);
+  const [availableDocuments, setAvailableDocuments] = useState<Document[]>([]);
+  const [showAddDocuments, setShowAddDocuments] = useState<boolean>(false);
+  const [addingDocument, setAddingDocument] = useState<boolean>(false);
+  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
 
   // Used to avoid automatic scroll on initial render before messages present
   const initialOpenRef = useRef<boolean>(true);
@@ -57,6 +82,46 @@ export default function Chat(): JSX.Element {
     };
     loadSession();
   }, [sessionId, setCurrentSession]);
+
+  // -- LOAD SESSION DOCUMENTS --
+  useEffect(() => {
+    if (!sessionId) return;
+    const loadDocuments = async () => {
+      setLoadingDocuments(true);
+      try {
+        const response = await api.get(`/sessions/${sessionId}/documents`);
+        setSessionDocuments(response.data.data || []);
+      } catch (err) {
+        console.error("Failed to load session documents", err);
+        setSessionDocuments([]);
+      } finally {
+        setLoadingDocuments(false);
+      }
+    };
+    loadDocuments();
+  }, [sessionId]);
+
+  // -- LOAD AVAILABLE DOCUMENTS (when add mode is opened) --
+  const loadAvailableDocuments = async () => {
+    try {
+      const response = await api.get('/documents/');
+      const allDocs = response.data.data || [];
+      // Filter out documents already in session
+      const sessionDocIds = new Set(sessionDocuments.map(sd => sd.document_id));
+      const available = allDocs.filter((doc: Document) => !sessionDocIds.has(doc.id));
+      setAvailableDocuments(available);
+    } catch (err) {
+      console.error('Failed to load available documents', err);
+      setAvailableDocuments([]);
+    }
+  };
+
+  // Reload available documents when session documents change or add mode opens
+  useEffect(() => {
+    if (showAddDocuments) {
+      loadAvailableDocuments();
+    }
+  }, [showAddDocuments, sessionDocuments]);
 
   // -- MESSAGES: initial load (page 1 = newest) --
   useEffect(() => {
@@ -270,10 +335,174 @@ export default function Chat(): JSX.Element {
     setIsUserNearBottom(true);
   };
 
+  // -- ADD DOCUMENT TO SESSION --
+  const handleAddDocument = async (documentId: string) => {
+    if (!sessionId || addingDocument) return;
+    setAddingDocument(true);
+    try {
+      await api.post('/sessions/add_documents', {
+        session_id: sessionId,
+        document_id: [documentId],
+      });
+      toast.success('Document added to session');
+      // Reload session documents
+      const response = await api.get(`/sessions/${sessionId}/documents`);
+      setSessionDocuments(response.data.data || []);
+      setShowAddDocuments(false);
+    } catch (err) {
+      console.error('Failed to add document', err);
+      toast.error('Failed to add document to session');
+    } finally {
+      setAddingDocument(false);
+    }
+  };
+
+  // -- REMOVE DOCUMENT FROM SESSION --
+  const handleRemoveDocument = async (documentId: string) => {
+    if (!sessionId || deletingDocumentId) return;
+    setDeletingDocumentId(documentId);
+    try {
+      await api.delete(`/sessions/${sessionId}/documents/${documentId}`);
+      toast.success('Document removed from session');
+      // Reload session documents
+      const response = await api.get(`/sessions/${sessionId}/documents`);
+      setSessionDocuments(response.data.data || []);
+    } catch (err) {
+      console.error('Failed to remove document', err);
+      toast.error('Failed to remove document from session');
+    } finally {
+      setDeletingDocumentId(null);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
+      {/* Header with Documents Button - Fixed at top */}
+      <div className="flex-shrink-0 border-b px-4 py-2 flex items-center justify-between bg-background">
+        <h2 className="text-base font-semibold">Chat</h2>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Documents ({sessionDocuments.length})
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-96" align="end">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-sm">
+                  {showAddDocuments ? 'Add Documents' : 'Session Documents'}
+                </h3>
+                {!showAddDocuments && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAddDocuments(true)}
+                    className="h-7 gap-1 text-xs"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add
+                  </Button>
+                )}
+                {showAddDocuments && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAddDocuments(false)}
+                    className="h-7"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+
+              {!showAddDocuments ? (
+                // View existing documents
+                <>
+                  {loadingDocuments ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : sessionDocuments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No documents in this session
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {sessionDocuments.map((doc) => (
+                        <TooltipProvider key={doc.id}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="group flex items-center gap-2 p-2 rounded-md bg-muted/50 hover:bg-muted transition-colors cursor-default">
+                                <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <p className="text-sm font-medium truncate flex-1">
+                                  {doc.document?.filename || `Document ${doc.document_id}`}
+                                </p>
+                                {sessionDocuments.length > 1 && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveDocument(doc.document_id);
+                                    }}
+                                    disabled={deletingDocumentId === doc.document_id}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                                    title="Remove document"
+                                  >
+                                    {deletingDocumentId === doc.document_id ? (
+                                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                    ) : (
+                                      <Trash2 className="h-3 w-3 text-destructive" />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{doc.document?.filename || `Document ${doc.document_id}`}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                // Add new documents
+                <div className="space-y-2">
+                  {availableDocuments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No more documents available to add
+                    </p>
+                  ) : (
+                    <Command className="rounded-lg border">
+                      <CommandInput placeholder="Search documents..." />
+                      <CommandList className="max-h-60">
+                        <CommandEmpty>No documents found.</CommandEmpty>
+                        <CommandGroup>
+                          {availableDocuments.map((doc) => (
+                            <CommandItem
+                              key={doc.id}
+                              onSelect={() => handleAddDocument(doc.id)}
+                              disabled={addingDocument}
+                              className="cursor-pointer"
+                            >
+                              <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+                              <span className="truncate">{doc.filename}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  )}
+                </div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
       {/* Messages area */}
-      <div className="flex-1">
+      <div className="flex-1 overflow-hidden">
         <ScrollArea
           className="h-full p-6"
           onScrollCapture={onScroll}

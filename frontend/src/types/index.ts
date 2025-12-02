@@ -19,11 +19,19 @@ export interface Document {
   updated_at: string;
 }
 
+export interface SessionDocument {
+  id: string;
+  session_id: string;
+  document_id: string;
+  document?: Document;
+  created_at: string;
+}
+
 export interface ChatSession {
   id: string;
   name: string;
-//   created_at: string;
-//   updated_at: string;
+  //   created_at: string;
+  //   updated_at: string;
 }
 
 export interface Message {

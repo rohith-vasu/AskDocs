@@ -27,14 +27,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
     return (
         <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="max-w-4xl mx-auto p-4">
+            <div className="max-w-4xl mx-auto p-3">
                 <div className="flex gap-2">
                     <Textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Ask a question about your documents..."
-                        className="min-h-[60px] max-h-[200px] resize-none"
+                        className="min-h-[48px] max-h-[200px] resize-none"
                         disabled={isLoading}
                     />
                     {isLoading && handleStop ? (
@@ -61,9 +61,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                         </Button>
                     )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                    Press Enter to send, Shift + Enter for new line
-                </p>
             </div>
         </div>
     );
