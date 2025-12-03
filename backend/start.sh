@@ -1,40 +1,61 @@
 #!/bin/bash
+set -e
 
-# Activate virtual environment
-echo "Activating virtual environment..."
-uv sync
-source .venv/bin/activate
-
-# Determine which environment file to use
+# --------------------------------------
+# Determine environment (development vs production)
+# --------------------------------------
 if [ -z "$ENV_FOR_DYNACONF" ]; then
-    # ENV_FOR_DYNACONF not set, default to development
+    # If running locally, default to development
     ENV_FOR_DYNACONF="development"
-    ENV_FILE=".env.dev"
-else
-    # ENV_FOR_DYNACONF set to something (e.g., production)
-    ENV_FILE=".env.prod"
 fi
 
-echo "Using ENV_FOR_DYNACONF=$ENV_FOR_DYNACONF"
-echo "Loading environment variables from $ENV_FILE"
+echo "🔧 ENV_FOR_DYNACONF = $ENV_FOR_DYNACONF"
 
-# Load environment variables from the selected file
+# --------------------------------------
+# Detect if running inside Docker
+# --------------------------------------
+if [ -f /.dockerenv ]; then
+    IS_DOCKER=true
+else
+    IS_DOCKER=false
+fi
+
+# --------------------------------------
+# Select correct env file
+# --------------------------------------
+if [ "$IS_DOCKER" = true ]; then
+    ENV_FILE=".env.prod"
+else
+    ENV_FILE=".env.dev"
+fi
+
 if [ -f "$ENV_FILE" ]; then
+    echo "📦 Loading $ENV_FILE"
     export $(grep -v '^#' "$ENV_FILE" | xargs)
 else
-    echo "Warning: $ENV_FILE not found, skipping"
+    echo "⚠️  $ENV_FILE not found — continuing without it"
 fi
 
+# --------------------------------------
+# Run server
+# --------------------------------------
+if [ "$IS_DOCKER" = true ]; then
+    echo "🐳 Running in Docker → PRODUCTION mode"
 
-# Pull values from env variables or hardcoded config
-HOST=$(python3 -c "from app.core.settings import settings; print(settings.fastapi.host)")
-PORT=$(python3 -c "from app.core.settings import settings; print(settings.fastapi.port)")
+    exec uvicorn app.main:app \
+        --host 0.0.0.0 \
+        --port "${PORT:-8000}"
+else
+    echo "💻 Running locally → DEVELOPMENT mode"
 
-# Start backend server in background
-echo "Starting backend server on $HOST:$PORT..."
-PYTHONPATH=. uvicorn app.main:app \
-  --host "$HOST" \
-  --port "$PORT" \
-  --reload \
-  --reload-dir ./app
+    # Activate virtual environment
+    if [ -d ".venv" ]; then
+        source .venv/bin/activate
+    fi
 
+    exec uvicorn app.main:app \
+        --host "${HOST:-0.0.0.0}" \
+        --port "${PORT:-8000}" \
+        --reload \
+        --reload-dir ./app
+fi

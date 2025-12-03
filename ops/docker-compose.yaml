@@ -37,7 +37,6 @@ services:
     networks:
       - askdocs-network
 
-
   postgres:
     image: postgres:17
     container_name: askdocs-postgres
@@ -94,7 +93,7 @@ services:
   redis-worker:
     image: askdocs/backend:latest
     container_name: askdocs-worker
-    command: bash -c "source .venv/bin/activate && rq worker -u redis://redis:6379 default"
+    command: bash -c "rq worker -u redis://redis:6379 default"
     restart: always
     depends_on:
       - redis
@@ -102,7 +101,7 @@ services:
       - askdocs-network
     environment:
       ENV_FOR_DYNACONF: production
-    env_file: 
+    env_file:
       - ../backend/.env.prod
     deploy:
       replicas: 1
@@ -113,6 +112,7 @@ volumes:
   postgres_data:
   pgadmin_data:
   qdrant_data:
+
 
 networks:
   askdocs-network:

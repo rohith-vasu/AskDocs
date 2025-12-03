@@ -170,7 +170,7 @@ export default function Dashboard() {
   const hasActivity = sessions.length > 0 || recentDocs.length > 0;
 
   return (
-    <div className="flex items-center justify-center h-full w-full px-4">
+    <div className="flex items-center justify-center h-full w-full px-4 pt-16 md:pt-0">
       <div className="flex flex-col items-center text-center space-y-10 max-w-5xl w-full">
         {/* Greeting */}
         <motion.div

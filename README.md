@@ -47,7 +47,7 @@ Make sure you have the following installed:
 
 ### Clone the repository
 ```bash
-git clone https://github.com/RohithVasu/AskDocs.git
+git clone https://github.com/rohith-vasu/AskDocs.git
 cd AskDocs
 ```
 
