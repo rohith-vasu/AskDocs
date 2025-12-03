@@ -1,20 +1,23 @@
 FROM python:3.12-slim
 
-RUN apt-get update && apt-get install -y build-essential cmake gcc g++
-
-# Install pip-tools
-RUN pip install pip-tools
+# Install system dependencies + tesseract
+RUN apt-get update && apt-get install -y \
+    build-essential gcc g++ cmake \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    libtesseract-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy all project files
-COPY . /app
-
-# Generate requirements.txt from pyproject.toml
+# Copy only dependency files first (for Docker cache)
+COPY pyproject.toml ./
+RUN pip install pip-tools
 RUN pip-compile --output-file requirements.txt pyproject.toml
 
-# Install dependencies from requirements.txt
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Run the custom start script
+# Copy app AFTER dependencies
+COPY . .
+
 CMD ["bash", "start.sh"]

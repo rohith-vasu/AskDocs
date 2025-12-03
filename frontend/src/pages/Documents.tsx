@@ -86,7 +86,7 @@ export default function DocumentsPage() {
 
     try {
       const skip = reset ? 0 : page * 50;
-      const response = await api.get(`/documents?skip=${skip}&limit=50`);
+      const response = await api.get(`/documents/?skip=${skip}&limit=50`);
       const fetchedDocs: Document[] = response.data?.data || [];
 
       setDocuments((prev) => {
@@ -265,7 +265,7 @@ export default function DocumentsPage() {
 
   const fetchSessions = async () => {
     try {
-      const res = await api.get('/sessions');
+      const res = await api.get('/sessions/');
       setSessions(res.data?.data || []);
     } catch {
       toast.error('Failed to load sessions');
